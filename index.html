@@ -6,6 +6,7 @@
   <title>QCare — Outpatient Queue & Patient-Flow Prototype</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -45,8 +46,9 @@
         <div>
           <div class="flex items-center gap-2">
             <span class="font-bold text-slate-900 text-base sm:text-lg tracking-tight">QCare</span>
-            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">
-              DTP Interactive Prototype
+            <span id="cloud-status-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <span>Connecting Cloud...</span>
             </span>
           </div>
           <p class="text-[11px] text-slate-500 hidden sm:block">Arogya Multispeciality OPD Clinic • Surat</p>
@@ -148,10 +150,10 @@
               <rect x="70" y="86" width="24" height="8" fill="currentColor"/>
             </svg>
           </div>
-          <p class="text-[11px] text-slate-500">URL: <span class="font-mono text-slate-700">qcare.in/c/arogya-opd</span></p>
+          <p class="text-[11px] text-slate-500">URL: <span class="font-mono text-slate-700">vaghaniraj6.github.io/qcare-prototype</span></p>
           <div class="pt-2 border-t border-slate-100 flex items-center justify-center gap-4 text-[11px] text-slate-500">
             <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-teal-600"></i> HTTPS/TLS</span>
-            <span class="flex items-center gap-1"><i data-lucide="message-circle" class="w-3.5 h-3.5 text-emerald-600"></i> WhatsApp Ready</span>
+            <span class="flex items-center gap-1"><i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i> Supabase Realtime</span>
           </div>
         </div>
 
@@ -214,7 +216,7 @@
             </button>
           </form>
 
-          <!-- Active Patient Token Tracker (Shown after registration or selecting active token) -->
+          <!-- Active Patient Token Tracker -->
           <div id="patient-tracker-card" class="hidden p-5 space-y-4">
             <div class="flex items-center justify-between">
               <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800" id="tracker-status-pill">
@@ -247,7 +249,7 @@
             </div>
 
             <p class="text-[11px] text-slate-500 text-center">
-              Tip: Switch to <button type="button" class="font-semibold text-teal-700 underline jump-staff-btn">Staff Console</button> and click "Call Next" to watch this tracker &amp; WhatsApp feed update live!
+              Tip: Open <button type="button" class="font-semibold text-teal-700 underline jump-staff-btn">Staff Console</button> on another phone or tab and click "Call Next" to watch this sync live!
             </p>
           </div>
         </div>
@@ -262,7 +264,7 @@
                   <span>QCare Clinic Alerts</span>
                   <i data-lucide="badge-check" class="w-3.5 h-3.5 text-sky-300"></i>
                 </div>
-                <div class="text-[10px] text-emerald-100">Meta WhatsApp Cloud API (Consent-Based)</div>
+                <div class="text-[10px] text-emerald-100">Meta WhatsApp Cloud API (Preview)</div>
               </div>
             </div>
             <button type="button" id="btn-clear-wa" class="text-[11px] text-emerald-100 hover:text-white underline">Clear</button>
@@ -550,6 +552,17 @@
   </div>
 
   <script>
+    // ==================== SUPABASE CLOUD CONFIG ====================
+    const SUPABASE_URL = 'https://fcykaoozfxokckwnkemb.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_kNClgi4hzR5Y_lahbZPfOg_SteJIzXc';
+    const CLINIC_ID = '11111111-1111-1111-1111-111111111111';
+    let sb = null;
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (e) {}
+
     // ==================== LOCALIZATION DICTIONARY (7 INDIAN LANGUAGES) ====================
     const I18N = {
       en: {
@@ -673,8 +686,9 @@
       }
     };
 
-    // ==================== IN-MEMORY APPLICATION STATE ====================
+    // ==================== IN-MEMORY + CLOUD STATE ====================
     const state = {
+      cloudConnected: false,
       activeView: 'patient',
       language: 'en',
       trackedTokenId: null,
@@ -683,39 +697,9 @@
       tvVoiceEnabled: true,
       lastAnnouncement: 'Now serving Token GM-101 in Room 101 (Dr. Ananya Sharma).',
       doctors: [
-        {
-          id: 'doc-1',
-          name: 'Dr. Ananya Sharma',
-          specialty: 'General Medicine',
-          room: 'Room 101',
-          prefix: 'GM',
-          nextSeq: 105,
-          avgMins: 8,
-          mode: 'Hybrid (Walk-in + Slots)',
-          paused: false
-        },
-        {
-          id: 'doc-2',
-          name: 'Dr. Rajesh Nair',
-          specialty: 'Pediatrics',
-          room: 'Room 102',
-          prefix: 'PD',
-          nextSeq: 204,
-          avgMins: 10,
-          mode: 'Same-Day Walk-in Only',
-          paused: false
-        },
-        {
-          id: 'doc-3',
-          name: 'Dr. Priya Kulkarni',
-          specialty: 'Dermatology',
-          room: 'Room 103',
-          prefix: 'DR',
-          nextSeq: 303,
-          avgMins: 7,
-          mode: 'Appointment Slots',
-          paused: false
-        }
+        { id: 'doc-1', name: 'Dr. Ananya Sharma', specialty: 'General Medicine', room: 'Room 101', prefix: 'GM', nextSeq: 105, avgMins: 8, mode: 'Hybrid (Walk-in + Slots)', paused: false },
+        { id: 'doc-2', name: 'Dr. Rajesh Nair', specialty: 'Pediatrics', room: 'Room 102', prefix: 'PD', nextSeq: 204, avgMins: 10, mode: 'Same-Day Walk-in Only', paused: false },
+        { id: 'doc-3', name: 'Dr. Priya Kulkarni', specialty: 'Dermatology', room: 'Room 103', prefix: 'DR', nextSeq: 303, avgMins: 7, mode: 'Appointment Slots', paused: false }
       ],
       queue: [
         { id: 'q1', token: 'GM-101', name: 'Rohan Desai', phone: '9825011223', doctorId: 'doc-1', flow: 'Walk-in', waConsent: true, status: 'In Cabin', createdAt: '03:40 PM' },
@@ -745,6 +729,78 @@
         }
       ]
     };
+
+    // ==================== CLOUD SYNC FUNCTIONS ====================
+    function updateCloudBadge(connected) {
+      const badge = document.getElementById('cloud-status-badge');
+      if (!badge) return;
+      if (connected) {
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>Cloud Sync Live</span>';
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200';
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><span>Local Demo Mode</span>';
+      }
+    }
+
+    async function loadCloudData() {
+      if (!sb) return false;
+      try {
+        const [{ data: clinic }, { data: docs, error: docErr }, { data: toks, error: tokErr }] = await Promise.all([
+          sb.from('clinics').select('*').eq('id', CLINIC_ID).maybeSingle(),
+          sb.from('doctors').select('*').eq('clinic_id', CLINIC_ID).order('id'),
+          sb.from('tokens').select('*').eq('clinic_id', CLINIC_ID).order('created_at', { ascending: true })
+        ]);
+        if (docErr || tokErr || !docs || docs.length === 0) return false;
+
+        if (clinic && clinic.retention_days) state.retentionDays = clinic.retention_days;
+        state.doctors = docs.map(d => ({
+          id: d.id,
+          name: d.name,
+          specialty: d.specialty,
+          room: d.room,
+          prefix: d.prefix,
+          nextSeq: d.next_seq,
+          avgMins: d.avg_mins,
+          mode: d.mode,
+          paused: d.paused
+        }));
+        state.queue = (toks || []).map(t => ({
+          id: t.id,
+          token: t.token_code,
+          name: t.patient_name,
+          phone: t.phone,
+          doctorId: t.doctor_id,
+          flow: t.flow,
+          waConsent: t.wa_consent,
+          status: t.status,
+          createdAt: new Date(t.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        }));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    async function initCloud() {
+      const ok = await loadCloudData();
+      state.cloudConnected = ok;
+      updateCloudBadge(ok);
+      renderAll();
+
+      if (ok && sb) {
+        sb.channel('qcare-live')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, async () => {
+            await loadCloudData();
+            renderAll();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'doctors' }, async () => {
+            await loadCloudData();
+            renderAll();
+          })
+          .subscribe();
+      }
+    }
 
     // ==================== UTILITIES ====================
     function showToast(message, tone = 'teal') {
@@ -820,11 +876,14 @@
     }
 
     // ==================== CORE QUEUE OPERATIONS ====================
-    function issueToken({ name, phone, doctorId, flow, waConsent, fromPatientPortal = false }) {
+    async function issueToken({ name, phone, doctorId, flow, waConsent, fromPatientPortal = false }) {
       const doctor = state.doctors.find(d => d.id === doctorId);
       if (!doctor) return null;
-      const tokenStr = `${doctor.prefix}-${doctor.nextSeq++}`;
-      const item = {
+      const seq = doctor.nextSeq;
+      const tokenStr = `${doctor.prefix}-${seq}`;
+      doctor.nextSeq = seq + 1;
+
+      let item = {
         id: 'q-' + Date.now() + Math.random().toString(36).slice(2, 5),
         token: tokenStr,
         name: name.trim(),
@@ -835,6 +894,22 @@
         status: 'Waiting',
         createdAt: getCurrentTimeStr()
       };
+
+      if (state.cloudConnected && sb) {
+        const { data: inserted } = await sb.from('tokens').insert({
+          clinic_id: CLINIC_ID,
+          doctor_id: doctorId,
+          token_code: tokenStr,
+          patient_name: item.name,
+          phone: item.phone,
+          flow,
+          wa_consent: waConsent,
+          status: 'Waiting'
+        }).select().single();
+        await sb.from('doctors').update({ next_seq: doctor.nextSeq }).eq('id', doctorId);
+        if (inserted) item.id = inserted.id;
+      }
+
       state.queue.push(item);
 
       const aheadCount = state.queue.filter(q => q.doctorId === doctorId && q.status === 'Waiting' && q.id !== item.id).length;
@@ -844,20 +919,18 @@
         pushWhatsApp(
           item,
           'Confirmation',
-          `✅ *QCare Token Confirmed:* Your token is *${tokenStr}* for *${doctor.name}* (${doctor.room}). Patients ahead: *${aheadCount}*. Est. wait: *~${estWait} mins*. Track live: qcare.in/t/${tokenStr}`
+          `✅ *QCare Token Confirmed:* Your token is *${tokenStr}* for *${doctor.name}* (${doctor.room}). Patients ahead: *${aheadCount}*. Est. wait: *~${estWait} mins*.`
         );
       }
 
-      if (fromPatientPortal) {
-        state.trackedTokenId = item.id;
-      }
+      if (fromPatientPortal) state.trackedTokenId = item.id;
 
       showToast(`Token ${tokenStr} issued for ${item.name}`, 'emerald');
       renderAll();
       return item;
     }
 
-    function callNextForDoctor(doctorId) {
+    async function callNextForDoctor(doctorId) {
       const doctor = state.doctors.find(d => d.id === doctorId);
       if (!doctor) return;
       if (doctor.paused) {
@@ -865,11 +938,14 @@
         return;
       }
 
-      // Complete current In Cabin patient if any
       const current = state.queue.find(q => q.doctorId === doctorId && q.status === 'In Cabin');
-      if (current) current.status = 'Completed';
+      if (current) {
+        current.status = 'Completed';
+        if (state.cloudConnected && sb) {
+          await sb.from('tokens').update({ status: 'Completed' }).eq('id', current.id);
+        }
+      }
 
-      // Promote next Waiting patient
       const waitingList = state.queue.filter(q => q.doctorId === doctorId && q.status === 'Waiting');
       if (waitingList.length === 0) {
         showToast(`No waiting patients for ${doctor.name}.`, 'amber');
@@ -879,15 +955,16 @@
 
       const nextPatient = waitingList[0];
       nextPatient.status = 'In Cabin';
+      if (state.cloudConnected && sb) {
+        await sb.from('tokens').update({ status: 'In Cabin' }).eq('id', nextPatient.id);
+      }
 
-      // WhatsApp "Turn Called" to nextPatient
       pushWhatsApp(
         nextPatient,
         'Turn Called',
         `🔔 *QCare Alert:* Token *${nextPatient.token}* — Please proceed to *${doctor.room}* (${doctor.name}) now.`
       );
 
-      // WhatsApp "Heads-Up" to 2nd waiting patient (now 1st or 2nd in line)
       if (waitingList[1]) {
         pushWhatsApp(
           waitingList[1],
@@ -901,10 +978,13 @@
       renderAll();
     }
 
-    function updatePatientStatus(patientId, newStatus) {
+    async function updatePatientStatus(patientId, newStatus) {
       const p = state.queue.find(q => q.id === patientId);
       if (!p) return;
       p.status = newStatus;
+      if (state.cloudConnected && sb) {
+        await sb.from('tokens').update({ status: newStatus }).eq('id', patientId);
+      }
       if (newStatus === 'In Cabin') {
         const doc = state.doctors.find(d => d.id === p.doctorId);
         if (doc) {
@@ -915,18 +995,24 @@
       renderAll();
     }
 
-    function toggleDoctorPause(doctorId) {
+    async function toggleDoctorPause(doctorId) {
       const doc = state.doctors.find(d => d.id === doctorId);
       if (!doc) return;
       doc.paused = !doc.paused;
+      if (state.cloudConnected && sb) {
+        await sb.from('doctors').update({ paused: doc.paused }).eq('id', doctorId);
+      }
       showToast(`${doc.name} queue ${doc.paused ? 'paused' : 'resumed'}`, doc.paused ? 'amber' : 'emerald');
       renderAll();
     }
 
-    function changeDoctorMode(doctorId, newMode) {
+    async function changeDoctorMode(doctorId, newMode) {
       const doc = state.doctors.find(d => d.id === doctorId);
       if (!doc) return;
       doc.mode = newMode;
+      if (state.cloudConnected && sb) {
+        await sb.from('doctors').update({ mode: newMode }).eq('id', doctorId);
+      }
       showToast(`${doc.name} mode set to "${newMode}"`);
       renderAll();
     }
@@ -961,7 +1047,6 @@
       document.getElementById('t-ahead').textContent = t.ahead;
       document.getElementById('t-est-wait').textContent = t.estWait;
 
-      // Populate doctor dropdown
       const docSelect = document.getElementById('p-doctor');
       const prevVal = docSelect.value || state.doctors[0].id;
       docSelect.innerHTML = state.doctors.map(d =>
@@ -974,7 +1059,6 @@
       const slotContainer = document.getElementById('p-slot-container');
       slotContainer.classList.toggle('hidden', selectedDoc.mode === 'Same-Day Walk-in Only');
 
-      // Show either form or live tracker
       const formEl = document.getElementById('patient-checkin-form');
       const trackerEl = document.getElementById('patient-tracker-card');
       const tracked = state.queue.find(q => q.id === state.trackedTokenId);
@@ -1014,7 +1098,6 @@
         trackerEl.classList.add('hidden');
       }
 
-      // Render WhatsApp feed
       const waFeed = document.getElementById('whatsapp-feed');
       if (state.whatsappLog.length === 0) {
         waFeed.innerHTML = `<div class="text-center text-xs text-slate-500 py-10">No WhatsApp alerts yet. Check in with WhatsApp consent or call a patient from Staff Console.</div>`;
@@ -1084,7 +1167,6 @@
         `;
       }).join('');
 
-      // Populate filter & modal dropdowns
       const filterEl = document.getElementById('staff-filter-doc');
       const currentFilter = filterEl.value || 'all';
       filterEl.innerHTML = `<option value="all">All Doctors</option>` + state.doctors.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
@@ -1095,7 +1177,6 @@
       sDocEl.innerHTML = state.doctors.map(d => `<option value="${d.id}">${d.name} (${d.room})</option>`).join('');
       sDocEl.value = prevSDoc;
 
-      // Render Queue Table
       const filteredQueue = currentFilter === 'all'
         ? state.queue
         : state.queue.filter(q => q.doctorId === currentFilter);
@@ -1184,6 +1265,7 @@
     }
 
     function renderSpecsView() {
+      document.getElementById('retention-range').value = state.retentionDays;
       document.getElementById('retention-value-badge').textContent =
         state.retentionDays === 30 ? '30 Days (Default)' : `${state.retentionDays} Days`;
 
@@ -1222,7 +1304,7 @@
       renderPatientView();
     });
 
-    document.getElementById('patient-checkin-form').addEventListener('submit', (e) => {
+    document.getElementById('patient-checkin-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('p-name').value;
       const phone = document.getElementById('p-phone').value;
@@ -1233,7 +1315,7 @@
         : document.getElementById('p-slot').value;
       const waConsent = document.getElementById('p-whatsapp-consent').checked;
 
-      issueToken({ name, phone, doctorId, flow, waConsent, fromPatientPortal: true });
+      await issueToken({ name, phone, doctorId, flow, waConsent, fromPatientPortal: true });
       e.target.reset();
       document.getElementById('p-whatsapp-consent').checked = true;
     });
@@ -1248,7 +1330,6 @@
       renderPatientView();
     });
 
-    // Staff Console delegated listeners
     document.getElementById('staff-doctor-cards').addEventListener('click', (e) => {
       const callBtn = e.target.closest('.btn-call-next');
       if (callBtn) callNextForDoctor(callBtn.dataset.callNext);
@@ -1268,15 +1349,14 @@
       if (btn) updatePatientStatus(btn.dataset.statusId, btn.dataset.statusVal);
     });
 
-    // Walk-in Modal
     const walkinModal = document.getElementById('walkin-modal');
     document.getElementById('btn-open-walkin-modal').addEventListener('click', () => walkinModal.classList.remove('hidden'));
     document.getElementById('btn-close-walkin-modal').addEventListener('click', () => walkinModal.classList.add('hidden'));
     document.getElementById('btn-cancel-walkin').addEventListener('click', () => walkinModal.classList.add('hidden'));
 
-    document.getElementById('staff-walkin-form').addEventListener('submit', (e) => {
+    document.getElementById('staff-walkin-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      issueToken({
+      await issueToken({
         name: document.getElementById('s-name').value,
         phone: document.getElementById('s-phone').value,
         doctorId: document.getElementById('s-doctor').value,
@@ -1289,7 +1369,6 @@
       walkinModal.classList.add('hidden');
     });
 
-    // TV Controls
     document.getElementById('tv-voice-toggle').addEventListener('change', (e) => {
       state.tvVoiceEnabled = e.target.checked;
     });
@@ -1302,10 +1381,16 @@
       showToast(`Announcing ${tok} in ${I18N[state.language].badge}`);
     });
 
-    // Specs sliders
     document.getElementById('retention-range').addEventListener('input', (e) => {
       state.retentionDays = Number(e.target.value);
       renderSpecsView();
+    });
+
+    document.getElementById('retention-range').addEventListener('change', async (e) => {
+      if (state.cloudConnected && sb) {
+        await sb.from('clinics').update({ retention_days: Number(e.target.value) }).eq('id', CLINIC_ID);
+        showToast(`Retention saved to cloud: ${e.target.value} days`, 'emerald');
+      }
     });
 
     document.getElementById('daily-patients-slider').addEventListener('input', (e) => {
@@ -1313,7 +1398,6 @@
       renderSpecsView();
     });
 
-    // Live TV Clock
     function updateClock() {
       const now = new Date();
       document.getElementById('tv-clock').textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1322,9 +1406,9 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Initial render
     switchView('patient');
     renderAll();
+    initCloud();
   </script>
 </body>
 </html>
