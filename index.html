@@ -1,4 +1,41 @@
-<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QCare — Cloud OPD Queue &amp; Patient-Flow Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .tv-glow { box-shadow: 0 0 32px rgba(16, 185, 129, 0.25); }
+    #standee-qr img, #standee-qr canvas { margin: 0 auto; border-radius: 0.5rem; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-teal-600 text-white font-extrabold flex items-center justify-center text-lg shadow-sm">Q</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-slate-900 tracking-tight text-base sm:text-lg">QCare</span>
+            <span id="cloud-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span id="cloud-status-text">Connecting...</span>
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500">Arogya Multispeciality OPD Clinic • Surat</p>
+        </div>
+      </div>
+
       <!-- View Switcher Tabs -->
       <nav class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full" aria-label="Prototype Views">
         <button type="button" data-view="patient" class="nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap">
@@ -20,7 +57,176 @@
       </nav>
     </div>
   </header>
-<!-- ... existing code ... -->
+
+  <!-- Toast Banner -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5">
+
+    <!-- ==================== VIEW 1: PATIENT QR & LIVE TRACKER ==================== -->
+    <section id="view-patient" class="view-section space-y-5">
+      <!-- Language & Zero-App Banner -->
+      <div class="bg-teal-50/80 border border-teal-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-start sm:items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-teal-600/10 text-teal-700 flex items-center justify-center shrink-0">
+            <i data-lucide="smartphone" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h1 class="text-sm font-bold text-teal-950" id="lbl-banner-title">Zero-App Patient QR Experience</h1>
+            <p class="text-xs text-teal-800/80" id="lbl-banner-sub">Patients scan the clinic QR code in any mobile browser—no app download required. Supports 7 Indian languages &amp; voice calls.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <label for="lang-select" class="text-xs font-semibold text-teal-900">Language:</label>
+          <select id="lang-select" class="text-xs sm:text-sm font-semibold bg-white border border-teal-300 text-slate-800 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value="en">English</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+            <option value="kn">ಕನ್ನಡ (Kannada)</option>
+            <option value="ml">മലയാളം (Malayalam)</option>
+            <option value="mr">मराठी (Marathi)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+            <option value="te">తెలుగు (Telugu)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 3-Column Patient Experience -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        <!-- Left: Clinic QR Standee -->
+        <div class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 text-center space-y-4">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+            <i data-lucide="scan-line" class="w-3.5 h-3.5 text-teal-600"></i>
+            <span>Clinic Reception Standee</span>
+          </span>
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Arogya OPD Clinic</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Scan with phone camera to get your digital token</p>
+          </div>
+
+          <div class="p-4 rounded-2xl border-2 border-slate-900 bg-white inline-block shadow-xs">
+            <div id="standee-qr" class="w-40 h-40 flex items-center justify-center"></div>
+          </div>
+
+          <div class="text-[11px] font-mono text-slate-500 break-all bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/70">
+            vaghaniraj6.github.io/qcare-prototype
+          </div>
+
+          <div class="flex items-center justify-center gap-4 pt-1 text-[11px] font-medium text-slate-500">
+            <span class="inline-flex items-center gap-1"><i data-lucide="lock" class="w-3.5 h-3.5 text-teal-600"></i> HTTPS/TLS</span>
+            <span class="inline-flex items-center gap-1"><i data-lucide="database" class="w-3.5 h-3.5 text-teal-600"></i> Supabase Live</span>
+          </div>
+        </div>
+
+        <!-- Center: Mobile Check-In Form & Active Digital Token Pass -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-slate-900 text-white px-4 py-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="text-xs font-bold tracking-wide">QCare Mobile Check-In</span>
+              </div>
+              <span id="mobile-lang-pill" class="text-[11px] font-bold uppercase px-2 py-0.5 rounded bg-slate-800 text-teal-300">EN</span>
+            </div>
+
+            <form id="patient-checkin-form" class="p-5 space-y-3.5">
+              <div>
+                <h3 class="text-base font-bold text-slate-900" id="lbl-form-title">Get Your OPD Token</h3>
+                <p class="text-xs text-slate-500" id="lbl-form-sub">Enter your details and select a doctor</p>
+              </div>
+
+              <div>
+                <label for="pt-name" class="block text-xs font-semibold text-slate-700 mb-1" id="lbl-name">Patient Full Name</label>
+                <input id="pt-name" type="text" required placeholder="e.g., Aarav Patel" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              </div>
+
+              <div>
+                <label for="pt-phone" class="block text-xs font-semibold text-slate-700 mb-1" id="lbl-phone">Mobile Number (for Token &amp; WhatsApp)</label>
+                <div class="flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-teal-500">
+                  <span class="px-3 py-2 bg-slate-100 text-slate-600 text-sm font-semibold border-r border-slate-300">+91</span>
+                  <input id="pt-phone" type="tel" required pattern="[0-9]{10}" maxlength="10" placeholder="9876543210" class="w-full px-3 py-2 text-sm focus:outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label for="pt-doctor" class="block text-xs font-semibold text-slate-700 mb-1" id="lbl-doctor">Select Doctor</label>
+                <select id="pt-doctor" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"></select>
+                <p id="pt-doctor-mode-hint" class="text-[11px] text-teal-700 font-medium mt-1">Active Mode: Hybrid (Walk-in + Slots)</p>
+              </div>
+
+              <div>
+                <label for="pt-flow" class="block text-xs font-semibold text-slate-700 mb-1" id="lbl-flow">Visit Type / Slot</label>
+                <select id="pt-flow" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                  <option value="Walk-in">Same-Day Walk-In</option>
+                  <option value="Slot 10:30 AM">Appointment Slot • 10:30 AM</option>
+                  <option value="Slot 11:00 AM">Appointment Slot • 11:00 AM</option>
+                  <option value="Slot 11:30 AM">Appointment Slot • 11:30 AM</option>
+                </select>
+              </div>
+
+              <label class="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 cursor-pointer">
+                <input id="pt-wa-consent" type="checkbox" checked class="mt-0.5 rounded text-teal-600 focus:ring-teal-500" />
+                <span class="text-[11px] text-slate-700 leading-snug" id="lbl-consent">
+                  Send me WhatsApp updates (token confirmation, heads-up when my turn is near, and when called) so I don't have to wait in the lobby.
+                </span>
+              </label>
+
+              <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+                <i data-lucide="ticket" class="w-4 h-4"></i>
+                <span id="lbl-submit">Generate Digital Token</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Active Digital Token Tracker Card -->
+          <div id="active-token-card" class="hidden bg-white rounded-2xl border-2 border-teal-500 shadow-md p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-teal-700" id="lbl-your-token">Your Digital Token</span>
+              <span id="tracked-status-pill" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">Waiting</span>
+            </div>
+            <div class="flex items-baseline justify-between border-b border-slate-100 pb-3">
+              <div>
+                <div id="tracked-token-code" class="text-3xl font-extrabold text-slate-900 tracking-tight">GM-105</div>
+                <div id="tracked-doctor-info" class="text-xs text-slate-600 font-medium mt-0.5">Dr. Ananya Sharma • Room 101</div>
+              </div>
+              <div class="text-right">
+                <div id="tracked-eta" class="text-lg font-extrabold text-teal-700">~8 mins</div>
+                <div id="tracked-ahead" class="text-[11px] text-slate-500">1 patient ahead</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span id="tracked-patient-name" class="font-semibold text-slate-700">Patient</span>
+              <a id="tracked-wa-btn" href="#" target="_blank" rel="noopener" class="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline">
+                Open in WhatsApp ↗
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Live WhatsApp Cloud API Alerts Feed -->
+        <div class="lg:col-span-4 bg-[#efeae2] rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div class="bg-[#075E54] text-white px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-emerald-400 text-[#075E54] font-extrabold flex items-center justify-center text-sm">Q</div>
+              <div>
+                <div class="text-xs font-bold flex items-center gap-1">
+                  <span>QCare Clinic Alerts</span>
+                  <i data-lucide="badge-check" class="w-3.5 h-3.5 text-emerald-300"></i>
+                </div>
+                <div class="text-[10px] text-emerald-100">Meta WhatsApp Cloud API + Direct Dispatch</div>
+              </div>
+            </div>
+            <button type="button" id="btn-clear-wa" class="text-[11px] text-emerald-100 hover:text-white underline">Clear</button>
+          </div>
+          <div id="whatsapp-feed" class="p-4 space-y-3 max-h-[470px] overflow-y-auto">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
     <!-- ==================== VIEW 2: STAFF & RECEPTION CONSOLE ==================== -->
     <section id="view-staff" class="view-section hidden space-y-5">
       <!-- Staff Login Gate -->
@@ -49,8 +255,8 @@
           </button>
         </form>
 
-        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <span>Demo Credential: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">reception@arogyaopd.in</code> / <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">qcare1234</code></span>
+        <div class="pt-3 border-t border-slate-100 text-xs text-slate-500">
+          Demo Credential: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">reception@arogyaopd.in</code> / <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">qcare1234</code>
         </div>
       </div>
 
@@ -58,9 +264,9 @@
       <div id="staff-workspace" class="hidden space-y-5">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               <h1 class="text-lg sm:text-xl font-bold text-slate-900">Staff &amp; Reception Queue Console</h1>
-              <span id="staff-user-badge" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+              <span id="staff-user-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">
                 reception@arogyaopd.in
               </span>
             </div>
@@ -85,11 +291,11 @@
           <!-- Populated dynamically -->
         </div>
 
-        <!-- Active Doctor Queue Table -->
+        <!-- Active Queue Table -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div class="px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2">
-              <h2 class="text-sm font-bold text-slate-900" id="staff-table-title">Queue List</h2>
+              <h2 class="text-sm font-bold text-slate-900">Queue List</h2>
               <span id="staff-queue-count" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">0</span>
             </div>
             <div class="flex items-center gap-2">
@@ -120,19 +326,370 @@
         </div>
       </div>
     </section>
-<!-- ... existing code ... -->
-    // ==================== IN-MEMORY + CLOUD STATE ====================
+
+    <!-- ==================== VIEW 3: WAITING-ROOM TV DISPLAY ==================== -->
+    <section id="view-tv" class="view-section hidden">
+      <div class="bg-slate-950 text-white rounded-3xl p-5 sm:p-7 border border-slate-800 shadow-xl space-y-6">
+        <!-- TV Top Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500 text-slate-950 font-extrabold flex items-center justify-center text-xl">Q</div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">Arogya Multispeciality OPD</h1>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Fire TV Stick HDMI Mode</span>
+              </div>
+              <p class="text-xs text-slate-400">Live OPD Token Board • Scan reception QR to track on your mobile</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" id="btn-tv-test-voice" class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-colors">
+              <i data-lucide="volume-2" class="w-4 h-4"></i>
+              <span>Announce Current Token</span>
+            </button>
+            <button type="button" id="btn-tv-mute" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs">
+              Voice: ON
+            </button>
+            <div id="tv-clock" class="text-base sm:text-lg font-mono font-bold text-emerald-400 bg-slate-900 px-3.5 py-1.5 rounded-xl border border-slate-800">
+              --:--
+            </div>
+          </div>
+        </div>
+
+        <!-- Now Serving Grid -->
+        <div id="tv-doctor-grid" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Upcoming Next in Line Strip -->
+        <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 shrink-0">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            <span>Up Next in Queue:</span>
+          </div>
+          <div id="tv-upcoming-strip" class="flex flex-wrap items-center gap-2 flex-1">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Voice Announcement Ticker -->
+        <div class="bg-emerald-950/60 border border-emerald-800/60 rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs text-emerald-200">
+          <i data-lucide="megaphone" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+          <span id="tv-announcement-text">Now serving Token GM-101 in Room 101 (Dr. Ananya Sharma).</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: ARCHITECTURE, PRIVACY & PRICING ==================== -->
+    <section id="view-specs" class="view-section hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <!-- Cloud Architecture & Privacy -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+          <div>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">System Architecture &amp; Privacy</span>
+            <h1 class="text-lg sm:text-xl font-bold text-slate-900 mt-2">Built for Indian Outpatient Clinics &amp; Hospitals</h1>
+            <p class="text-xs sm:text-sm text-slate-600 mt-1">Focused specifically on OPD queue flow and waiting-room congestion—without complex EMR bloat or proprietary kiosk hardware.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <div class="text-xs font-bold text-teal-700">Database &amp; Auth</div>
+              <div class="text-sm font-extrabold text-slate-900">Supabase Cloud</div>
+              <p class="text-xs text-slate-500">Organization-isolated clinic data, Realtime sync, and staff authentication.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <div class="text-xs font-bold text-teal-700">Edge Hosting &amp; TLS</div>
+              <div class="text-sm font-extrabold text-slate-900">Vercel / GitHub HTTPS</div>
+              <p class="text-xs text-slate-500">Encrypted HTTPS/TLS connections for mobile QR check-ins and Fire TV browsers.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <div class="text-xs font-bold text-teal-700">Messaging</div>
+              <div class="text-sm font-extrabold text-slate-900">Meta WhatsApp Cloud API</div>
+              <p class="text-xs text-slate-500">Consent-based token confirmation, heads-up alerts, and turn-called notifications.</p>
+            </div>
+          </div>
+
+          <!-- Data Retention Control -->
+          <div class="p-4 rounded-2xl bg-teal-50/60 border border-teal-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-sm font-bold text-slate-900">Clinic-Configurable Patient Token Retention</h2>
+                <p class="text-xs text-slate-600">Automatically purges historical patient token records after the configured window (30 days default).</p>
+              </div>
+              <span id="retention-badge" class="px-3 py-1 rounded-full bg-teal-600 text-white text-xs font-bold">30 Days</span>
+            </div>
+            <input id="retention-slider" type="range" min="7" max="90" value="30" class="w-full accent-teal-600 cursor-pointer" />
+            <div class="flex justify-between text-[11px] text-slate-500 font-medium">
+              <span>7 Days (Strict)</span>
+              <span>30 Days (Default)</span>
+              <span>90 Days (Extended)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Commercial Model Card -->
+        <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-md flex flex-col justify-between space-y-5">
+          <div class="space-y-4">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Simple Clinic SaaS</span>
+            <div>
+              <div class="flex items-baseline gap-1">
+                <span class="text-3xl font-extrabold">₹2,499</span>
+                <span class="text-xs text-slate-400">/ month per clinic</span>
+              </div>
+              <p class="text-xs text-emerald-300 font-semibold mt-1">14-Day Free Trial • ₹0 Setup Fee • ₹0 Per-Patient Fee</p>
+            </div>
+
+            <ul class="space-y-2.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i> Unlimited OPD patients &amp; digital tokens</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i> Multi-doctor queues (Walk-in, Slots, Hybrid)</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i> 7 Indian languages + spoken TV announcements</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i> Works on existing HDMI TV + Amazon Fire TV Stick</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400 shrink-0"></i> Consent-based WhatsApp Cloud API integration</li>
+            </ul>
+          </div>
+
+          <button type="button" id="btn-start-trial" class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition-colors">
+            Start 14-Day Clinic Trial
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Reception Walk-In / Booking Modal -->
+  <div id="walkin-modal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Reception Manual Walk-In / Booking</h3>
+        <button type="button" id="btn-close-walkin-modal" class="text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="walkin-form" class="space-y-3">
+        <div>
+          <label for="wi-name" class="block text-xs font-semibold text-slate-700 mb-1">Patient Name</label>
+          <input id="wi-name" type="text" required placeholder="e.g., Meera Shah" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+        </div>
+        <div>
+          <label for="wi-phone" class="block text-xs font-semibold text-slate-700 mb-1">Mobile Number (+91)</label>
+          <input id="wi-phone" type="tel" required pattern="[0-9]{10}" maxlength="10" placeholder="9825012345" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+        </div>
+        <div>
+          <label for="wi-doctor" class="block text-xs font-semibold text-slate-700 mb-1">Doctor</label>
+          <select id="wi-doctor" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"></select>
+        </div>
+        <div>
+          <label for="wi-flow" class="block text-xs font-semibold text-slate-700 mb-1">Queue Type</label>
+          <select id="wi-flow" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value="Walk-in">Same-Day Walk-In</option>
+            <option value="Advance Booking">Advance Booking</option>
+          </select>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-slate-700 pt-1">
+          <input id="wi-wa" type="checkbox" checked class="rounded text-teal-600" />
+          <span>Patient consented to WhatsApp notifications</span>
+        </label>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="btn-cancel-walkin" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold">Issue Token</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ==================== SUPABASE CONFIGURATION ====================
+    const SUPABASE_URL = 'https://fcykaoozfxokckwnkemb.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_kNClgi4hzR5Y_lahbZPfOg_SteJIzXc';
+    const CLINIC_ID = '11111111-1111-1111-1111-111111111111';
+    const PUBLIC_APP_URL = 'https://vaghaniraj6.github.io/qcare-prototype/';
+
+    let sb = null;
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (err) {
+      console.warn('Supabase client init fallback:', err);
+    }
+
+    // ==================== LOCALIZATION DICTIONARY (7 LANGUAGES) ====================
+    const I18N = {
+      en: {
+        bannerTitle: 'Zero-App Patient QR Experience',
+        bannerSub: 'Patients scan the clinic QR code in any mobile browser—no app download required. Supports 7 Indian languages & voice calls.',
+        formTitle: 'Get Your OPD Token',
+        formSub: 'Enter your details and select a doctor',
+        name: 'Patient Full Name',
+        phone: 'Mobile Number (for Token & WhatsApp)',
+        doctor: 'Select Doctor',
+        flow: 'Visit Type / Slot',
+        consent: "Send me WhatsApp updates (token confirmation, heads-up when my turn is near, and when called) so I don't have to wait in the lobby.",
+        submit: 'Generate Digital Token',
+        yourToken: 'Your Digital Token',
+        voiceLang: 'en-IN',
+        voicePhrase: (tok, room, doc) => `Token ${tok}. Please proceed to ${room}, ${doc}.`
+      },
+      hi: {
+        bannerTitle: 'बिना ऐप के QR टोकन सुविधा',
+        bannerSub: 'मरीज़ क्लिनिक का QR कोड स्कैन करके सीधे मोबाइल ब्राउज़र पर डिजिटल टोकन प्राप्त कर सकते हैं।',
+        formTitle: 'अपना OPD टोकन प्राप्त करें',
+        formSub: 'अपना विवरण भरें और डॉक्टर चुनें',
+        name: 'मरीज़ का पूरा नाम',
+        phone: 'मोबाइल नंबर (टोकन और WhatsApp के लिए)',
+        doctor: 'डॉक्टर चुनें',
+        flow: 'विज़िट प्रकार / स्लॉट',
+        consent: 'मुझे WhatsApp पर टोकन की पुष्टि और मेरी बारी आने की सूचना भेजें।',
+        submit: 'डिजिटल टोकन बनाएं',
+        yourToken: 'आपका डिजिटल टोकन',
+        voiceLang: 'hi-IN',
+        voicePhrase: (tok, room) => `टोकन नंबर ${tok}, कृपया ${room} में जाएं।`
+      },
+      kn: {
+        bannerTitle: 'ಆ್ಯಪ್ ಇಲ್ಲದ QR ರೋಗಿ ನೋಂದಣಿ',
+        bannerSub: 'ಕ್ಲಿನಿಕ್ QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಮೊಬೈಲ್ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಡಿಜಿಟಲ್ ಟೋಕನ್ ಪಡೆಯಿರಿ.',
+        formTitle: 'ನಿಮ್ಮ OPD ಟೋಕನ್ ಪಡೆಯಿರಿ',
+        formSub: 'ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ ಮತ್ತು ವೈದ್ಯರನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+        name: 'ರೋಗಿಯ ಪೂರ್ಣ ಹೆಸರು',
+        phone: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ (WhatsApp ಅಪ್‌ಡೇಟ್‌ಗಾಗಿ)',
+        doctor: 'ವೈದ್ಯರನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+        flow: 'ಭೇಟಿ ವಿಧ / ಸ್ಲಾಟ್',
+        consent: 'ನನ್ನ ಸರದಿ ಹತ್ತಿರ ಬಂದಾಗ WhatsApp ಮೂಲಕ ಮಾಹಿತಿ ಕಳುಹಿಸಿ.',
+        submit: 'ಡಿಜಿಟಲ್ ಟೋಕನ್ ಪಡೆಯಿರಿ',
+        yourToken: 'ನಿಮ್ಮ ಡಿಜಿಟಲ್ ಟೋಕನ್',
+        voiceLang: 'kn-IN',
+        voicePhrase: (tok, room) => `ಟೋಕನ್ ಸಂಖ್ಯೆ ${tok}, ದಯವಿಟ್ಟು ${room} ಗೆ ಬನ್ನಿ.`
+      },
+      ml: {
+        bannerTitle: 'ആപ്പ് ഇല്ലാതെ QR ടോക്കൺ സംവിധാനം',
+        bannerSub: 'ക്ലിനിക്കിലെ QR കോഡ് സ്കാൻ ചെയ്ത് മൊബൈൽ ബ്രൗസറിൽ ഡിജിറ്റൽ ടോക്കൺ നേടുക.',
+        formTitle: 'നിങ്ങളുടെ OPD ടോക്കൺ എടുക്കുക',
+        formSub: 'വിവരങ്ങൾ നൽകി ഡോക്ടറെ തിരഞ്ഞെടുക്കുക',
+        name: 'രോഗിയുടെ പൂർണ്ണ പേര്',
+        phone: 'മൊബൈൽ നമ്പർ (WhatsApp അപ്‌ഡേറ്റുകൾക്ക്)',
+        doctor: 'ഡോക്ടറെ തിരഞ്ഞെടുക്കുക',
+        flow: 'സന്ദർശന രീതി / സ്ലോട്ട്',
+        consent: 'എന്റെ ഊഴം അടുക്കുമ്പോൾ WhatsApp വഴി അറിയിപ്പ് അയക്കുക.',
+        submit: 'ഡിജിറ്റൽ ടോക്കൺ നേടുക',
+        yourToken: 'നിങ്ങളുടെ ഡിജിറ്റൽ ടോക്കൺ',
+        voiceLang: 'ml-IN',
+        voicePhrase: (tok, room) => `ടോക്കൺ നമ്പർ ${tok}, ദയവായി ${room} ലേക്ക് വരുക.`
+      },
+      mr: {
+        bannerTitle: 'ॲपशिवाय QR रुग्ण नोंदणी',
+        bannerSub: 'क्लिनिकचा QR कोड स्कॅन करून थेट मोबाईल ब्राउझरवर डिजिटल टोकन मिळवा.',
+        formTitle: 'तुमचे OPD टोकन मिळवा',
+        formSub: 'माहिती भरा आणि डॉक्टर निवडा',
+        name: 'रुग्णाचे पूर्ण नाव',
+        phone: 'मोबाईल नंबर (WhatsApp अपडेटसाठी)',
+        doctor: 'डॉक्टर निवडा',
+        flow: 'भेट प्रकार / स्लॉट',
+        consent: 'माझा नंबर जवळ आल्यावर मला WhatsApp वर कळवा.',
+        submit: 'डिजिटल टोकन तयार करा',
+        yourToken: 'तुमचे डिजिटल टोकन',
+        voiceLang: 'mr-IN',
+        voicePhrase: (tok, room) => `टोकन क्रमांक ${tok}, कृपया ${room} मध्ये यावे.`
+      },
+      ta: {
+        bannerTitle: 'செயலி இல்லாத QR டோக்கன் சேவை',
+        bannerSub: 'கிளினிக் QR குறியீட்டை ஸ்கேன் செய்து மொபைல் பிரவுசரில் டிஜிட்டல் டோக்கன் பெறுங்கள்.',
+        formTitle: 'உங்கள் OPD டோக்கனைப் பெறுங்கள்',
+        formSub: 'விவரங்களை உள்ளிட்டு மருத்துவரைத் தேர்ந்தெடுக்கவும்',
+        name: 'நோயாளியின் முழு பெயர்',
+        phone: 'மொபைல் எண் (WhatsApp தகவல்களுக்கு)',
+        doctor: 'மருத்துவரைத் தேர்ந்தெடுக்கவும்',
+        flow: 'வருகை வகை / நேரம்',
+        consent: 'என் முறை வரும்போது WhatsApp மூலம் தகவல் அனுப்பவும்.',
+        submit: 'டிஜிட்டல் டோக்கன் உருவாக்கு',
+        yourToken: 'உங்கள் டிஜிட்டல் டோக்கன்',
+        voiceLang: 'ta-IN',
+        voicePhrase: (tok, room) => `டோக்கன் எண் ${tok}, தயவுசெய்து ${room} க்கு செல்லவும்.`
+      },
+      te: {
+        bannerTitle: 'యాప్ లేకుండా QR టోకెన్ సౌకర్యం',
+        bannerSub: 'క్లినిక్ QR కోడ్ స్కాన్ చేసి మొబైల్ బ్రౌజర్‌లో డిజిటల్ టోకెన్ పొందండి.',
+        formTitle: 'మీ OPD టోకెన్ పొందండి',
+        formSub: 'వివరాలు నమోదు చేసి డాక్టర్‌ను ఎంచుకోండి',
+        name: 'రోగి పూర్తి పేరు',
+        phone: 'మొబైల్ నంబర్ (WhatsApp అప్‌డేట్‌ల కోసం)',
+        doctor: 'డాక్టర్‌ను ఎంచుకోండి',
+        flow: 'సందర్శన రకం / స్లాట్',
+        consent: 'నా వంతు దగ్గర పడినప్పుడు WhatsApp ద్వారా సందేశం పంపండి.',
+        submit: 'డిజిటల్ టోకెన్ పొందండి',
+        yourToken: 'మీ డిజిటల్ టోకెన్',
+        voiceLang: 'te-IN',
+        voicePhrase: (tok, room) => `టోకెన్ నంబర్ ${tok}, దయచేసి ${room} కి వెళ్ళండి.`
+      }
+    };
+
+    // ==================== APPLICATION STATE ====================
     const state = {
       cloudConnected: false,
       staffUser: sessionStorage.getItem('qcare_staff_email') || null,
       activeView: 'patient',
       language: 'en',
-      trackedTokenId: null,
+      trackedTokenId: localStorage.getItem('qcare_tracked_id') || null,
       retentionDays: 30,
-      dailyPatients: 120,
       tvVoiceEnabled: true,
       lastAnnouncement: 'Now serving Token GM-101 in Room 101 (Dr. Ananya Sharma).',
-<!-- ... existing code ... -->
+      doctors: [
+        { id: 'doc-1', name: 'Dr. Ananya Sharma', specialty: 'General Medicine', room: 'Room 101', prefix: 'GM', nextSeq: 105, avgMins: 8, mode: 'Hybrid (Walk-in + Slots)', paused: false },
+        { id: 'doc-2', name: 'Dr. Rajesh Nair', specialty: 'Pediatrics', room: 'Room 102', prefix: 'PD', nextSeq: 204, avgMins: 10, mode: 'Same-Day Walk-in Only', paused: false },
+        { id: 'doc-3', name: 'Dr. Priya Kulkarni', specialty: 'Dermatology', room: 'Room 103', prefix: 'DR', nextSeq: 303, avgMins: 7, mode: 'Appointment Slots', paused: false }
+      ],
+      queue: [
+        { id: 'q-1', token: 'GM-101', name: 'Rohan Desai', phone: '9825011223', doctorId: 'doc-1', flow: 'Walk-in', waConsent: true, status: 'In Cabin' },
+        { id: 'q-2', token: 'GM-102', name: 'Kavita Joshi', phone: '9879044556', doctorId: 'doc-1', flow: 'Slot 10:30 AM', waConsent: true, status: 'Waiting' },
+        { id: 'q-3', token: 'PD-201', name: 'Aarav Mehta', phone: '9824077889', doctorId: 'doc-2', flow: 'Walk-in', waConsent: true, status: 'In Cabin' }
+      ],
+      whatsappLog: [
+        {
+          id: 'wa-init-1',
+          to: 'Rohan Desai (+91 9825011223)',
+          type: 'TURN CALLED',
+          text: '🔔 *QCare Alert*: Token *GM-101* — It is your turn now! Please proceed to *Room 101* (Dr. Ananya Sharma).',
+          waUrl: 'https://wa.me/919825011223?text=' + encodeURIComponent('QCare Alert: Token GM-101 — It is your turn now! Please proceed to Room 101 (Dr. Ananya Sharma).'),
+          time: '09:30 AM'
+        }
+      ]
+    };
+
+    // ==================== UTILITIES ====================
+    function getCurrentTimeStr() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function showToast(msg, tone = 'slate') {
+      const container = document.getElementById('toast-container');
+      const colors = {
+        slate: 'bg-slate-900 text-white border-slate-700',
+        emerald: 'bg-emerald-700 text-white border-emerald-500',
+        amber: 'bg-amber-600 text-white border-amber-400'
+      };
+      const el = document.createElement('div');
+      el.className = `px-4 py-2.5 rounded-xl border shadow-lg text-xs font-semibold transition-all ${colors[tone] || colors.slate}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => { el.remove(); }, 3200);
+    }
+
+    function setCloudBadge(isLive) {
+      state.cloudConnected = isLive;
+      const badge = document.getElementById('cloud-status-badge');
+      const text = document.getElementById('cloud-status-text');
+      if (isLive) {
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        badge.querySelector('span').className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+        text.textContent = 'Cloud Sync Live';
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200';
+        badge.querySelector('span').className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
+        text.textContent = 'Local Demo Mode';
+      }
+    }
+
     function pushWhatsApp(patient, type, text) {
       if (!patient.waConsent) return;
       const cleanPhone = '91' + String(patient.phone).replace(/\D/g, '').slice(-10);
@@ -146,15 +703,323 @@
         waUrl,
         time: getCurrentTimeStr()
       });
-      if (state.whatsappLog.length > 20) state.whatsappLog.pop();
+      if (state.whatsappLog.length > 25) state.whatsappLog.pop();
     }
-<!-- ... existing code ... -->
+
+    function speakAnnouncement(tokenCode, room, doctorName) {
+      const langPack = I18N[state.language] || I18N.en;
+      const spoken = langPack.voicePhrase(tokenCode, room, doctorName);
+      state.lastAnnouncement = `Now serving Token ${tokenCode} in ${room} (${doctorName}).`;
+      const ticker = document.getElementById('tv-announcement-text');
+      if (ticker) ticker.textContent = state.lastAnnouncement;
+
+      if (!state.tvVoiceEnabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(spoken);
+        utter.lang = langPack.voiceLang;
+        utter.rate = 0.95;
+        window.speechSynthesis.speak(utter);
+      } catch (e) {
+        console.warn('Speech synthesis skipped:', e);
+      }
+    }
+
+    // ==================== SUPABASE CLOUD SYNC ====================
+    async function loadCloudData() {
+      if (!sb) return false;
+      try {
+        const [clinicRes, docRes, tokRes] = await Promise.all([
+          sb.from('clinics').select('retention_days').eq('id', CLINIC_ID).maybeSingle(),
+          sb.from('doctors').select('*').eq('clinic_id', CLINIC_ID).order('id'),
+          sb.from('tokens').select('*').eq('clinic_id', CLINIC_ID).order('created_at', { ascending: true })
+        ]);
+
+        if (docRes.error || tokRes.error) return false;
+
+        if (clinicRes.data && clinicRes.data.retention_days) {
+          state.retentionDays = clinicRes.data.retention_days;
+        }
+        if (docRes.data && docRes.data.length > 0) {
+          state.doctors = docRes.data.map(d => ({
+            id: d.id,
+            name: d.name,
+            specialty: d.specialty,
+            room: d.room,
+            prefix: d.prefix,
+            nextSeq: d.next_seq,
+            avgMins: d.avg_mins,
+            mode: d.mode,
+            paused: d.paused
+          }));
+        }
+        if (tokRes.data) {
+          state.queue = tokRes.data.map(t => ({
+            id: t.id,
+            token: t.token_code,
+            name: t.patient_name,
+            phone: t.phone,
+            doctorId: t.doctor_id,
+            flow: t.flow,
+            waConsent: t.wa_consent,
+            status: t.status
+          }));
+        }
+        return true;
+      } catch (err) {
+        console.warn('Cloud fetch failed:', err);
+        return false;
+      }
+    }
+
+    async function initCloud() {
+      const ok = await loadCloudData();
+      setCloudBadge(ok);
+      renderAll();
+
+      if (!ok || !sb) return;
+
+      // Safe WebSocket subscription with 4-second polling fallback for sandboxed iframes
+      try {
+        sb.channel('qcare-live-' + CLINIC_ID)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, async () => {
+            await loadCloudData();
+            renderAll();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'doctors' }, async () => {
+            await loadCloudData();
+            renderAll();
+          })
+          .subscribe();
+      } catch (wsErr) {
+        console.warn('WebSocket blocked in sandbox, polling active:', wsErr);
+      }
+
+      setInterval(async () => {
+        const refreshed = await loadCloudData();
+        if (refreshed) {
+          setCloudBadge(true);
+          renderAll();
+        }
+      }, 4000);
+    }
+
+    // ==================== CORE QUEUE OPERATIONS ====================
+    async function createPatientToken({ name, phone, doctorId, flow, waConsent, trackOnDevice = false }) {
+      const doc = state.doctors.find(d => d.id === doctorId);
+      if (!doc) return;
+
+      const seq = doc.nextSeq;
+      const tokenCode = `${doc.prefix}-${seq}`;
+      doc.nextSeq = seq + 1;
+
+      const aheadCount = state.queue.filter(q => q.doctorId === doctorId && q.status === 'Waiting').length;
+      const estWait = (aheadCount + 1) * doc.avgMins;
+
+      let newRecord = {
+        id: 'local-' + Date.now(),
+        token: tokenCode,
+        name,
+        phone,
+        doctorId,
+        flow,
+        waConsent,
+        status: 'Waiting'
+      };
+
+      if (state.cloudConnected && sb) {
+        const [insRes] = await Promise.all([
+          sb.from('tokens').insert({
+            clinic_id: CLINIC_ID,
+            doctor_id: doctorId,
+            token_code: tokenCode,
+            patient_name: name,
+            phone,
+            flow,
+            wa_consent: waConsent,
+            status: 'Waiting'
+          }).select().single(),
+          sb.from('doctors').update({ next_seq: doc.nextSeq }).eq('id', doctorId)
+        ]);
+        if (insRes.data) newRecord.id = insRes.data.id;
+      }
+
+      state.queue.push(newRecord);
+      if (trackOnDevice) {
+        state.trackedTokenId = newRecord.id;
+        localStorage.setItem('qcare_tracked_id', newRecord.id);
+      }
+
+      pushWhatsApp(
+        newRecord,
+        'TOKEN CONFIRMED',
+        `✅ *QCare Confirmation*: Hi ${name}, your OPD token is *${tokenCode}* for *${doc.name}* (${doc.room}). Patients ahead: ${aheadCount} (~${estWait} mins).`
+      );
+
+      showToast(`Token ${tokenCode} issued for ${name}`, 'emerald');
+      renderAll();
+    }
+
+    async function callNextForDoctor(doctorId) {
+      const doc = state.doctors.find(d => d.id === doctorId);
+      if (!doc) return;
+
+      // Complete current 'In Cabin' patient for this doctor
+      const currentInCabin = state.queue.find(q => q.doctorId === doctorId && q.status === 'In Cabin');
+      if (currentInCabin) {
+        currentInCabin.status = 'Completed';
+        if (state.cloudConnected && sb) {
+          await sb.from('tokens').update({ status: 'Completed' }).eq('id', currentInCabin.id);
+        }
+      }
+
+      // Move next 'Waiting' patient into cabin
+      const waitingList = state.queue.filter(q => q.doctorId === doctorId && q.status === 'Waiting');
+      if (waitingList.length === 0) {
+        showToast(`No patients waiting for ${doc.name}`, 'amber');
+        renderAll();
+        return;
+      }
+
+      const nextPt = waitingList[0];
+      nextPt.status = 'In Cabin';
+      if (state.cloudConnected && sb) {
+        await sb.from('tokens').update({ status: 'In Cabin' }).eq('id', nextPt.id);
+      }
+
+      pushWhatsApp(
+        nextPt,
+        'TURN CALLED',
+        `🔔 *QCare Alert*: Token *${nextPt.token}* — It is your turn now! Please proceed to *${doc.room}* (${doc.name}).`
+      );
+
+      // Send heads-up to the patient now next in line
+      if (waitingList.length > 1) {
+        const upNext = waitingList[1];
+        pushWhatsApp(
+          upNext,
+          'HEADS-UP',
+          `⏳ *QCare Heads-Up*: Token *${upNext.token}* — You are next in line for *${doc.name}* (${doc.room}). Estimated wait: ~${doc.avgMins} mins.`
+        );
+      }
+
+      speakAnnouncement(nextPt.token, doc.room, doc.name);
+      showToast(`Called ${nextPt.token} (${nextPt.name}) to ${doc.room}`, 'emerald');
+      renderAll();
+    }
+
+    async function updatePatientStatus(tokenId, newStatus) {
+      const item = state.queue.find(q => q.id === tokenId);
+      if (!item) return;
+      const doc = state.doctors.find(d => d.id === item.doctorId);
+
+      if (newStatus === 'In Cabin' && doc) {
+        const prev = state.queue.find(q => q.doctorId === doc.id && q.status === 'In Cabin' && q.id !== tokenId);
+        if (prev) {
+          prev.status = 'Completed';
+          if (state.cloudConnected && sb) {
+            await sb.from('tokens').update({ status: 'Completed' }).eq('id', prev.id);
+          }
+        }
+        pushWhatsApp(
+          item,
+          'TURN CALLED',
+          `🔔 *QCare Alert*: Token *${item.token}* — Please proceed to *${doc.room}* (${doc.name}).`
+        );
+        speakAnnouncement(item.token, doc.room, doc.name);
+      }
+
+      item.status = newStatus;
+      if (state.cloudConnected && sb) {
+        await sb.from('tokens').update({ status: newStatus }).eq('id', tokenId);
+      }
+      renderAll();
+    }
+
+    // ==================== RENDER FUNCTIONS ====================
+    function renderNavigation() {
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        const isActive = btn.dataset.view === state.activeView;
+        btn.className = isActive
+          ? 'nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap bg-white text-teal-700 shadow-xs'
+          : 'nav-tab px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap text-slate-600 hover:text-slate-900';
+      });
+      document.querySelectorAll('.view-section').forEach(sec => {
+        sec.classList.toggle('hidden', sec.id !== `view-${state.activeView}`);
+      });
+    }
+
+    function renderPatientView() {
+      const t = I18N[state.language] || I18N.en;
+      document.getElementById('mobile-lang-pill').textContent = state.language.toUpperCase();
+      document.getElementById('lbl-banner-title').textContent = t.bannerTitle;
+      document.getElementById('lbl-banner-sub').textContent = t.bannerSub;
+      document.getElementById('lbl-form-title').textContent = t.formTitle;
+      document.getElementById('lbl-form-sub').textContent = t.formSub;
+      document.getElementById('lbl-name').textContent = t.name;
+      document.getElementById('lbl-phone').textContent = t.phone;
+      document.getElementById('lbl-doctor').textContent = t.doctor;
+      document.getElementById('lbl-flow').textContent = t.flow;
+      document.getElementById('lbl-consent').textContent = t.consent;
+      document.getElementById('lbl-submit').textContent = t.submit;
+      document.getElementById('lbl-your-token').textContent = t.yourToken;
+
+      const docSelect = document.getElementById('pt-doctor');
+      const prevVal = docSelect.value;
+      docSelect.innerHTML = state.doctors.map(d =>
+        `<option value="${d.id}">${d.name} (${d.specialty} • ${d.room})${d.paused ? ' [Paused]' : ''}</option>`
+      ).join('');
+      if (prevVal && state.doctors.some(d => d.id === prevVal)) docSelect.value = prevVal;
+
+      const selectedDoc = state.doctors.find(d => d.id === docSelect.value) || state.doctors[0];
+      if (selectedDoc) {
+        document.getElementById('pt-doctor-mode-hint').textContent = `Active Mode: ${selectedDoc.mode}`;
+      }
+
+      // Tracked token card
+      const tracked = state.queue.find(q => q.id === state.trackedTokenId) || state.queue[state.queue.length - 1];
+      const card = document.getElementById('active-token-card');
+      if (tracked) {
+        card.classList.remove('hidden');
+        const doc = state.doctors.find(d => d.id === tracked.doctorId);
+        const docWaiting = state.queue.filter(q => q.doctorId === tracked.doctorId && q.status === 'Waiting');
+        const posIdx = docWaiting.findIndex(q => q.id === tracked.id);
+
+        document.getElementById('tracked-token-code').textContent = tracked.token;
+        document.getElementById('tracked-doctor-info').textContent = doc ? `${doc.name} • ${doc.room}` : '';
+        document.getElementById('tracked-patient-name').textContent = `${tracked.name} (+91 ${tracked.phone})`;
+
+        const statusPill = document.getElementById('tracked-status-pill');
+        statusPill.textContent = tracked.status;
+        if (tracked.status === 'In Cabin') {
+          statusPill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800';
+          document.getElementById('tracked-eta').textContent = 'NOW';
+          document.getElementById('tracked-ahead').textContent = 'Proceed to cabin';
+        } else if (tracked.status === 'Completed') {
+          statusPill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-700';
+          document.getElementById('tracked-eta').textContent = 'Done';
+          document.getElementById('tracked-ahead').textContent = 'Visit completed';
+        } else {
+          const ahead = posIdx >= 0 ? posIdx : docWaiting.length;
+          const mins = (ahead + 1) * (doc ? doc.avgMins : 8);
+          statusPill.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800';
+          document.getElementById('tracked-eta').textContent = `~${mins} mins`;
+          document.getElementById('tracked-ahead').textContent = ahead === 0 ? 'You are next!' : `${ahead} patient(s) ahead`;
+        }
+
+        const waMsg = `QCare Token ${tracked.token} (${doc ? doc.name : ''}, ${doc ? doc.room : ''}) — Status: ${tracked.status}`;
+        document.getElementById('tracked-wa-btn').href = `https://wa.me/91${String(tracked.phone).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(waMsg)}`;
+      } else {
+        card.classList.add('hidden');
+      }
+
+      // WhatsApp feed
       const waFeed = document.getElementById('whatsapp-feed');
       if (state.whatsappLog.length === 0) {
         waFeed.innerHTML = `<div class="text-center text-xs text-slate-500 py-10">No WhatsApp alerts yet. Check in with WhatsApp consent or call a patient from Staff Console.</div>`;
       } else {
         waFeed.innerHTML = state.whatsappLog.map(m => `
-          <div class="bg-white rounded-xl rounded-tl-none p-3 shadow-sm border border-slate-200/80 space-y-1.5">
+          <div class="bg-white rounded-xl rounded-tl-none p-3 shadow-xs border border-slate-200/80 space-y-1.5">
             <div class="flex items-center justify-between gap-2">
               <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">${m.type}</span>
               <span class="text-[10px] text-slate-400">${m.time}</span>
@@ -184,25 +1049,211 @@
       if (tabIcon) tabIcon.setAttribute('data-lucide', 'tablet-smartphone');
       document.getElementById('staff-user-badge').textContent = state.staffUser;
 
+      // Doctor Cards
       const cardsEl = document.getElementById('staff-doctor-cards');
       cardsEl.innerHTML = state.doctors.map(doc => {
-<!-- ... existing code ... -->
+        const inCabin = state.queue.find(q => q.doctorId === doc.id && q.status === 'In Cabin');
+        const waitingCount = state.queue.filter(q => q.doctorId === doc.id && q.status === 'Waiting').length;
+        const loadMins = waitingCount * doc.avgMins;
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 space-y-3.5">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">${doc.name}</h3>
+                <p class="text-xs text-slate-500">${doc.specialty} • ${doc.room}</p>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${doc.paused ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                ${doc.paused ? 'Paused' : 'Active'}
+              </span>
+            </div>
+
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Now Serving</div>
+                <div class="text-xl font-extrabold text-slate-900">${inCabin ? inCabin.token : 'None'}</div>
+                <div class="text-[11px] text-slate-500">${inCabin ? inCabin.name : 'Cabin idle'}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Waiting</div>
+                <div class="text-xl font-extrabold text-teal-700">${waitingCount}</div>
+                <div class="text-[11px] text-slate-500">~${loadMins}m load</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Patient-Flow Mode</label>
+              <select data-mode-doc="${doc.id}" class="doc-mode-select w-full text-xs font-semibold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <option value="Hybrid (Walk-in + Slots)" ${doc.mode === 'Hybrid (Walk-in + Slots)' ? 'selected' : ''}>Hybrid (Walk-in + Slots)</option>
+                <option value="Same-Day Walk-in Only" ${doc.mode === 'Same-Day Walk-in Only' ? 'selected' : ''}>Same-Day Walk-in Only</option>
+                <option value="Appointment Slots" ${doc.mode === 'Appointment Slots' ? 'selected' : ''}>Appointment Slots</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-2 pt-0.5">
+              <button type="button" data-call-doc="${doc.id}" ${doc.paused ? 'disabled' : ''} class="btn-call-next flex-1 py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors">
+                <i data-lucide="bell-ring" class="w-3.5 h-3.5"></i>
+                <span>Call Next</span>
+              </button>
+              <button type="button" data-pause-doc="${doc.id}" class="btn-toggle-pause px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold">
+                ${doc.paused ? 'Resume' : 'Pause'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Filter dropdown
+      const filterSelect = document.getElementById('staff-filter-doc');
+      const currentFilter = filterSelect.value || 'all';
+      filterSelect.innerHTML = `<option value="all">All Doctors</option>` +
+        state.doctors.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      filterSelect.value = currentFilter;
+
+      // Queue Table
+      const filtered = currentFilter === 'all'
+        ? state.queue
+        : state.queue.filter(q => q.doctorId === currentFilter);
+
+      document.getElementById('staff-queue-count').textContent = filtered.length;
+      const tbody = document.getElementById('staff-queue-tbody');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-xs text-slate-500">No tokens in queue. Patients can scan the QR code or reception can add a walk-in.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => {
+        const doc = state.doctors.find(d => d.id === item.doctorId);
+        const statusStyles = {
+          'In Cabin': 'bg-emerald-100 text-emerald-800',
+          'Waiting': 'bg-amber-100 text-amber-800',
+          'Completed': 'bg-slate-100 text-slate-600',
+          'Skipped': 'bg-rose-100 text-rose-700'
+        };
+        const waText = `QCare Alert: Token ${item.token} — Please proceed to ${doc ? doc.room : 'OPD'} (${doc ? doc.name : ''}).`;
+        const waLink = `https://wa.me/91${String(item.phone).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(waText)}`;
+
+        return `
+          <tr class="hover:bg-slate-50/80">
+            <td class="px-4 py-2.5 font-extrabold text-slate-900">${item.token}</td>
+            <td class="px-4 py-2.5">
+              <div class="font-semibold text-slate-800">${item.name}</div>
+              <div class="text-[11px] text-slate-500">+91 ${item.phone}</div>
+            </td>
+            <td class="px-4 py-2.5 text-slate-700">${doc ? doc.name : item.doctorId}</td>
             <td class="px-4 py-2.5 text-slate-600">${item.flow}</td>
             <td class="px-4 py-2.5">
               ${item.waConsent
-                ? `<a href="https://wa.me/91${String(item.phone).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`QCare Alert: Token ${item.token} — Please proceed to ${doc ? doc.room : 'OPD'} (${doc ? doc.name : ''}).`)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-emerald-700 hover:underline font-semibold text-xs">Send WA ↗</a>`
+                ? `<a href="${waLink}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-emerald-700 hover:underline font-semibold text-xs">Send WA ↗</a>`
                 : '<span class="text-slate-400 text-xs">No</span>'}
             </td>
             <td class="px-4 py-2.5">
-              <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusStyle}">${item.status}</span>
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusStyles[item.status] || 'bg-slate-100 text-slate-700'}">${item.status}</span>
             </td>
             <td class="px-4 py-2.5 text-right space-x-1 whitespace-nowrap">
-<!-- ... existing code ... -->
-    document.getElementById('staff-queue-tbody').addEventListener('click', (e) => {
-      const btn = e.target.closest('.btn-row-status');
-      if (btn) updatePatientStatus(btn.dataset.statusId, btn.dataset.statusVal);
+              ${item.status === 'Waiting' ? `<button type="button" data-status-id="${item.id}" data-status-val="In Cabin" class="btn-row-status px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold">Call</button>` : ''}
+              ${item.status === 'In Cabin' ? `<button type="button" data-status-id="${item.id}" data-status-val="Completed" class="btn-row-status px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold">Done</button>` : ''}
+              ${item.status === 'Waiting' ? `<button type="button" data-status-id="${item.id}" data-status-val="Skipped" class="btn-row-status px-2 py-1 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-semibold">Skip</button>` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderTvView() {
+      const grid = document.getElementById('tv-doctor-grid');
+      grid.innerHTML = state.doctors.map(doc => {
+        const inCabin = state.queue.find(q => q.doctorId === doc.id && q.status === 'In Cabin');
+        const nextWaiting = state.queue.find(q => q.doctorId === doc.id && q.status === 'Waiting');
+        return `
+          <div class="bg-slate-900 rounded-2xl p-5 border ${inCabin ? 'border-emerald-500/60 tv-glow' : 'border-slate-800'} flex flex-col justify-between space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="px-3 py-1 rounded-lg bg-slate-800 text-emerald-300 text-xs font-bold">${doc.room}</span>
+              <span class="text-xs font-semibold ${doc.paused ? 'text-amber-400' : 'text-slate-400'}">${doc.paused ? 'PAUSED' : doc.specialty}</span>
+            </div>
+            <div class="py-2">
+              <div class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Now Serving</div>
+              <div class="text-4xl sm:text-5xl font-extrabold tracking-tight ${inCabin ? 'text-emerald-400' : 'text-slate-600'} mt-1">
+                ${inCabin ? inCabin.token : '---'}
+              </div>
+              <div class="text-sm font-semibold text-slate-200 mt-1">${inCabin ? inCabin.name : 'Waiting for next patient'}</div>
+            </div>
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+              <span class="text-slate-400 font-medium">${doc.name}</span>
+              <span class="text-amber-300 font-bold">Next: ${nextWaiting ? nextWaiting.token : 'None'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const upcoming = state.queue.filter(q => q.status === 'Waiting').slice(0, 6);
+      const strip = document.getElementById('tv-upcoming-strip');
+      if (upcoming.length === 0) {
+        strip.innerHTML = `<span class="text-xs text-slate-400">No waiting tokens in queue.</span>`;
+      } else {
+        strip.innerHTML = upcoming.map(u => {
+          const doc = state.doctors.find(d => d.id === u.doctorId);
+          return `<span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs font-bold text-white">${u.token} <span class="text-slate-400 font-normal">(${doc ? doc.room : ''})</span></span>`;
+        }).join('');
+      }
+    }
+
+    function renderSpecsView() {
+      const slider = document.getElementById('retention-slider');
+      const badge = document.getElementById('retention-badge');
+      if (slider) slider.value = state.retentionDays;
+      if (badge) badge.textContent = `${state.retentionDays} Days`;
+    }
+
+    function renderAll() {
+      renderNavigation();
+      renderPatientView();
+      renderStaffView();
+      renderTvView();
+      renderSpecsView();
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activeView = btn.dataset.view;
+        renderAll();
+      });
     });
 
+    document.getElementById('lang-select').addEventListener('change', (e) => {
+      state.language = e.target.value;
+      renderAll();
+    });
+
+    document.getElementById('pt-doctor').addEventListener('change', () => {
+      renderPatientView();
+    });
+
+    document.getElementById('patient-checkin-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('pt-name').value.trim();
+      const phone = document.getElementById('pt-phone').value.trim();
+      const doctorId = document.getElementById('pt-doctor').value;
+      const flow = document.getElementById('pt-flow').value;
+      const waConsent = document.getElementById('pt-wa-consent').checked;
+      if (!name || !phone) return;
+
+      await createPatientToken({ name, phone, doctorId, flow, waConsent, trackOnDevice: true });
+      document.getElementById('pt-name').value = '';
+      document.getElementById('pt-phone').value = '';
+    });
+
+    document.getElementById('btn-clear-wa').addEventListener('click', () => {
+      state.whatsappLog = [];
+      renderPatientView();
+    });
+
+    // Staff Auth
     document.getElementById('staff-login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('login-email').value.trim();
@@ -222,7 +1273,7 @@
       if (email === 'reception@arogyaopd.in' && password === 'qcare1234') {
         state.staffUser = email;
         sessionStorage.setItem('qcare_staff_email', email);
-        showToast(`Signed in to Clinic Console (${email})`, 'emerald');
+        showToast(`Signed in to Staff Console (${email})`, 'emerald');
         renderAll();
       } else {
         showToast('Invalid credentials. Use reception@arogyaopd.in / qcare1234', 'amber');
@@ -239,6 +1290,52 @@
       renderAll();
     });
 
+    // Staff Console Actions
+    document.getElementById('staff-doctor-cards').addEventListener('click', async (e) => {
+      const callBtn = e.target.closest('.btn-call-next');
+      if (callBtn) {
+        await callNextForDoctor(callBtn.dataset.callDoc);
+        return;
+      }
+      const pauseBtn = e.target.closest('.btn-toggle-pause');
+      if (pauseBtn) {
+        const doc = state.doctors.find(d => d.id === pauseBtn.dataset.pauseDoc);
+        if (doc) {
+          doc.paused = !doc.paused;
+          if (state.cloudConnected && sb) {
+            await sb.from('doctors').update({ paused: doc.paused }).eq('id', doc.id);
+          }
+          showToast(`${doc.name} queue ${doc.paused ? 'paused' : 'resumed'}`);
+          renderAll();
+        }
+      }
+    });
+
+    document.getElementById('staff-doctor-cards').addEventListener('change', async (e) => {
+      if (e.target.classList.contains('doc-mode-select')) {
+        const doc = state.doctors.find(d => d.id === e.target.dataset.modeDoc);
+        if (doc) {
+          doc.mode = e.target.value;
+          if (state.cloudConnected && sb) {
+            await sb.from('doctors').update({ mode: doc.mode }).eq('id', doc.id);
+          }
+          showToast(`${doc.name} mode updated to ${doc.mode}`);
+          renderAll();
+        }
+      }
+    });
+
+    document.getElementById('staff-filter-doc').addEventListener('change', () => {
+      renderStaffView();
+    });
+
+    document.getElementById('staff-queue-tbody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.btn-row-status');
+      if (btn) {
+        await updatePatientStatus(btn.dataset.statusId, btn.dataset.statusVal);
+      }
+    });
+
     document.getElementById('btn-reset-demo-queue').addEventListener('click', async () => {
       if (state.cloudConnected && sb) {
         await sb.from('tokens').delete().eq('clinic_id', CLINIC_ID).in('status', ['Completed', 'Skipped']);
@@ -248,5 +1345,91 @@
       renderAll();
     });
 
+    // Reception Walk-in Modal
     const walkinModal = document.getElementById('walkin-modal');
-<!-- ... existing code ... -->
+    document.getElementById('btn-open-walkin-modal').addEventListener('click', () => {
+      document.getElementById('wi-doctor').innerHTML = state.doctors.map(d =>
+        `<option value="${d.id}">${d.name} (${d.room})</option>`
+      ).join('');
+      walkinModal.classList.remove('hidden');
+    });
+    document.getElementById('btn-close-walkin-modal').addEventListener('click', () => walkinModal.classList.add('hidden'));
+    document.getElementById('btn-cancel-walkin').addEventListener('click', () => walkinModal.classList.add('hidden'));
+
+    document.getElementById('walkin-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('wi-name').value.trim();
+      const phone = document.getElementById('wi-phone').value.trim();
+      const doctorId = document.getElementById('wi-doctor').value;
+      const flow = document.getElementById('wi-flow').value;
+      const waConsent = document.getElementById('wi-wa').checked;
+      if (!name || !phone) return;
+
+      await createPatientToken({ name, phone, doctorId, flow, waConsent, trackOnDevice: false });
+      document.getElementById('wi-name').value = '';
+      document.getElementById('wi-phone').value = '';
+      walkinModal.classList.add('hidden');
+    });
+
+    // TV Controls
+    document.getElementById('btn-tv-test-voice').addEventListener('click', () => {
+      const serving = state.queue.find(q => q.status === 'In Cabin') || state.queue[0];
+      if (serving) {
+        const doc = state.doctors.find(d => d.id === serving.doctorId);
+        speakAnnouncement(serving.token, doc ? doc.room : 'Room 101', doc ? doc.name : 'Doctor');
+      } else {
+        speakAnnouncement('GM-101', 'Room 101', 'Dr. Ananya Sharma');
+      }
+    });
+
+    document.getElementById('btn-tv-mute').addEventListener('click', (e) => {
+      state.tvVoiceEnabled = !state.tvVoiceEnabled;
+      e.target.textContent = `Voice: ${state.tvVoiceEnabled ? 'ON' : 'MUTED'}`;
+    });
+
+    // Retention Slider & Trial Button
+    document.getElementById('retention-slider').addEventListener('input', (e) => {
+      state.retentionDays = Number(e.target.value);
+      document.getElementById('retention-badge').textContent = `${state.retentionDays} Days`;
+    });
+
+    document.getElementById('retention-slider').addEventListener('change', async (e) => {
+      const days = Number(e.target.value);
+      if (state.cloudConnected && sb) {
+        await sb.from('clinics').update({ retention_days: days }).eq('id', CLINIC_ID);
+      }
+      showToast(`Token retention updated to ${days} days`, 'emerald');
+    });
+
+    document.getElementById('btn-start-trial').addEventListener('click', () => {
+      showToast('14-Day Free Trial activated for Arogya Multispeciality OPD!', 'emerald');
+    });
+
+    // ==================== INITIALIZATION ====================
+    window.addEventListener('DOMContentLoaded', () => {
+      const qrBox = document.getElementById('standee-qr');
+      if (qrBox && window.QRCode) {
+        qrBox.innerHTML = '';
+        new QRCode(qrBox, {
+          text: PUBLIC_APP_URL,
+          width: 160,
+          height: 160,
+          colorDark: '#0f172a',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+
+      const updateClock = () => {
+        const el = document.getElementById('tv-clock');
+        if (el) el.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      };
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      renderAll();
+      initCloud();
+    });
+  </script>
+</body>
+</html>
